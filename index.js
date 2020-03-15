@@ -1,32 +1,33 @@
-//TORUN: ask gym counter how busy the gym is
+//Usage: ask gym counter how busy the gym is
 
-
-// This sample demonstrates handling intents from an Alexa skill using the Alexa Skills Kit SDK (v2).
-// Please visit https://alexa.design/cookbook for additional examples on implementing slots, dialog management,
-// session persistence, api calls, and more.
 const Alexa = require('ask-sdk-core');
 const axios = require('axios');
 const jsdom = require("jsdom");
 const { JSDOM } = jsdom;
 
+/**
+ * Data used to drive the api requests
+ * @type {{pin: *, loginUrl: string, email: *, associateAccount: string}}
+ */
 const DATA = {
   associateAccount: 'false',
   email: process.env.GYM_EMAIL,
-  pin: process.env.GYM_PIN
+  pin: process.env.GYM_PIN,
+  loginUrl: 'https://www.puregym.com/Login/?ReturnUrl=%2Fmembers%2F'
 }
 
 const getNumberOfPeople = async () => {
-  console.log("HELLO DOES THIS GET LOGGED")
   const startDate = new Date();
   const getResponse = await axios({
     method: 'get',
-    url: 'https://www.puregym.com/Login/?ReturnUrl=%2Fmembers%2F'
+    url: DATA.loginUrl
   })
 
   const loginHeaders = getResponse.headers['set-cookie'].map(header => header.split(';')[0] + ';')
   const dom = new JSDOM(getResponse.data);
   const requestVerificationFromCookie = loginHeaders[5]
   const requestFromBody = dom.window.document.getElementsByName('__RequestVerificationToken')[0].value
+  //This is hardcoded but should be a way to get this from response
   const rayGunCookieValue = 'raygun4js-userid=f8df9586-a6c4-f3f3-adfa-17e796b9c49d;'
   const initialCookie = `${loginHeaders[0]} ${loginHeaders[3]} ${requestVerificationFromCookie} CookieNotification=; ${rayGunCookieValue} ${loginHeaders[1]} ${loginHeaders[2].split(';')[0]}`
 
@@ -69,8 +70,6 @@ const getNumberOfPeople = async () => {
       'sec-fetch-user': '71'
     }
   }
-  console.log('LOGGING BEFORE AXIOS')
-// IT IS TIMING OUT SO NEED TO DO PROGRESSIVE STUFF
 
   const membersResponse = await axios(axiosBody)
   const membersDom = new JSDOM(membersResponse.data);
@@ -97,53 +96,7 @@ const LaunchRequestHandler = {
     .getResponse();
   }
 };
-// DOES NOT WORK BECAUSE: TypeError: Cannot read property 'getDirectiveServiceClient' of undefined
-// const HelloWorldIntentHandler = {
-//     canHandle(handlerInput) {
-//         return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
-//             && Alexa.getIntentName(handlerInput.requestEnvelope) === 'GymIntent';
-//     },
-//   async handle(handlerInput) {
-//     const speechText = 'Hello World!';
 
-//     await callDirectiveService(handlerInput);
-
-//     return new Promise((resolve, reject) => {
-//       setTimeout(() => {
-//         const response = handlerInput.responseBuilder
-//                         .speak(speechText)
-//                         .withSimpleCard('Hello World', speechText)
-//                         .getResponse();
-//         resolve(response)
-//       }, 3000);
-//     })
-//   },
-// };
-
-// function callDirectiveService(handlerInput) {
-//   // Call Alexa Directive Service.
-//   const { requestEnvelope, serviceClientFactory, attributesManager } = handlerInput;
-
-//   const directiveServiceClient = serviceClientFactory.getDirectiveServiceClient();
-
-//   const requestId = requestEnvelope.request.requestId;
-
-//   // build the progressive response directive
-//   const directive = {
-//     header: {
-//       requestId,
-//     },
-//     directive: {
-//       type: 'VoicePlayer.Speak',
-//       speech: `this is a test speech`,
-//     },
-//   };
-
-//   // send directive
-//   return directiveServiceClient.enqueue(directive);
-// }
-
-//DOES NOT WORK AS IT TIMES OUT AFTER 8 SECONDS AND THIS THIRD REQUEST IS SLOW
 const HelloWorldIntentHandler = {
   canHandle(handlerInput) {
     return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
@@ -153,17 +106,17 @@ const HelloWorldIntentHandler = {
     const speakOutput = await getNumberOfPeople();
     return handlerInput.responseBuilder
     .speak(speakOutput)
-    //.reprompt('add a reprompt if you want to keep the session open for the user to respond')
     .getResponse();
   }
 };
+
 const HelpIntentHandler = {
   canHandle(handlerInput) {
     return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest'
       && Alexa.getIntentName(handlerInput.requestEnvelope) === 'AMAZON.HelpIntent';
   },
   handle(handlerInput) {
-    const speakOutput = 'You can say hello to me! How can I help?';
+    const speakOutput = 'You can ask me how busy the gym is. How can I help?';
 
     return handlerInput.responseBuilder
     .speak(speakOutput)
@@ -194,10 +147,6 @@ const SessionEndedRequestHandler = {
   }
 };
 
-// The intent reflector is used for interaction model testing and debugging.
-// It will simply repeat the intent the user said. You can create custom handlers
-// for your intents by defining them above, then also adding them to the request
-// handler chain below.
 const IntentReflectorHandler = {
   canHandle(handlerInput) {
     return Alexa.getRequestType(handlerInput.requestEnvelope) === 'IntentRequest';
@@ -208,7 +157,6 @@ const IntentReflectorHandler = {
 
     return handlerInput.responseBuilder
     .speak(speakOutput)
-    //.reprompt('add a reprompt if you want to keep the session open for the user to respond')
     .getResponse();
   }
 };
@@ -231,7 +179,7 @@ const ErrorHandler = {
   }
 };
 
-// The SkillBuilder acts as the entry point for your skill, routing all request and response
+// The SkillBuilder acts as the entry point for the skill, routing all request and response
 // payloads to the handlers above. Make sure any new handlers or interceptors you've
 // defined are included below. The order matters - they're processed top to bottom.
 exports.handler = Alexa.SkillBuilders.custom()

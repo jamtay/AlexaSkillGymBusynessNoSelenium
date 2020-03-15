@@ -10,7 +10,6 @@ const DATA = {
 }
 
 const getNumberOfPeople = async () => {
-  console.log("HELLO DOES THIS GET LOGGED")
   const startDate = new Date();
   const getResponse = await axios({
     method: 'get',
@@ -63,8 +62,6 @@ const getNumberOfPeople = async () => {
       'sec-fetch-user': '71'
     }
   }
-  console.log('LOGGING BEFORE AXIOS')
-// IT IS TIMING OUT SO NEED TO DO PROGRESSIVE STUFF
 
   const membersResponse = await axios(axiosBody)
   const membersDom = new JSDOM(membersResponse.data);
